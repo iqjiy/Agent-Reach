@@ -241,8 +241,8 @@ class TestCLI:
             ]
         ]
         assert cli._BOSS_AGENT_CLI_PR_COMMIT in cli._BOSS_AGENT_CLI_SOURCE
-        assert cli._BOSS_AGENT_CLI_PR_COMMIT == "ba0f12541079ad794eae4c3bf3fc348befd228c9"
-        assert "PR #382" in capsys.readouterr().out
+        assert cli._BOSS_AGENT_CLI_PR_COMMIT == "8ff6bd3eac5dfc1215500043da9647cd6ea4c73f"
+        assert "boss-agent-cli #403-#407" in capsys.readouterr().out
 
     def test_install_boss_deps_falls_back_to_uv(self, monkeypatch):
         state = {"boss_installed": False}

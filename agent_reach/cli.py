@@ -19,10 +19,12 @@ from agent_reach import __version__
 
 # Pinned to the 0.4.2 state — PyPI still only has 0.4.1 (upstream issue #10).
 _RDT_GIT_SOURCE = "git+https://github.com/public-clis/rdt-cli.git@5e4fb3720d5c174e976cd425ccc3b879d52cac66"
-# Temporary, reproducible source while upstream boss-agent-cli PR #382 is pending.
-# Replace this one constant with the first released version containing strict CDP,
-# JobItem.lid, and job_card_browser(). Never point the installer at a moving branch.
-_BOSS_AGENT_CLI_PR_COMMIT = "ba0f12541079ad794eae4c3bf3fc348befd228c9"
+# Temporary, reproducible snapshot while upstream boss-agent-cli PRs #403-#407
+# (the five independent successor PRs of the closed #382) are pending. Points at an
+# immutable merge commit on the fork. Replace this one constant with the first
+# released version containing strict CDP, JobItem.lid, job_card_browser(), and the
+# throttle progress feedback. Never point the installer at a moving branch.
+_BOSS_AGENT_CLI_PR_COMMIT = "8ff6bd3eac5dfc1215500043da9647cd6ea4c73f"
 _BOSS_AGENT_CLI_SOURCE = (
     "git+https://github.com/iqjiy/boss-agent-cli.git@"
     + _BOSS_AGENT_CLI_PR_COMMIT
@@ -993,14 +995,15 @@ def _install_twitter_deps():
 def _install_boss_deps():
     """Install the strict-CDP boss-agent-cli build required by the Boss channel.
 
-    PR #382 is not released yet, so the source is pinned to an immutable fork
-    commit. Force-installing is intentional: PyPI 1.18.0 exposes the ``boss``
-    executable but lacks the public strict-CDP APIs required by this channel.
+    Upstream boss-agent-cli PRs #403-#407 are not released yet, so the source is
+    pinned to an immutable merge snapshot of those five PRs. Force-installing is
+    intentional: PyPI 1.18.0 exposes the ``boss`` executable but lacks the public
+    strict-CDP APIs required by this channel.
     """
     import shutil
     import subprocess
 
-    print("Setting up Boss直聘 (boss-agent-cli strict CDP, PR #382)...")
+    print("Setting up Boss直聘 (boss-agent-cli #403-#407 snapshot)...")
     for tool, args in [
         ("pipx", ["install", "--force", _BOSS_AGENT_CLI_SOURCE]),
         ("uv", ["tool", "install", "--force", _BOSS_AGENT_CLI_SOURCE]),
@@ -1017,7 +1020,7 @@ def _install_boss_deps():
                 timeout=300,
             )
             if result.returncode == 0 and shutil.which("boss"):
-                print("  ✅ boss-agent-cli installed from pinned PR #382 commit")
+                print("  ✅ boss-agent-cli installed from pinned #403-#407 snapshot commit")
                 print("  下一步：启动专用 Chrome，由用户手动登录 zhipin.com，再运行 agent-reach doctor")
                 return True
         except (OSError, subprocess.TimeoutExpired):
