@@ -41,9 +41,10 @@ curl -s "https://r.jina.ai/https://linkedin.com/in/username"
 > 端口的 Chrome 几乎必现）。判断登录态只信 `boss status`（wt2/__zp_stoken__），
 > 绝不用当前页 URL。
 
-> **依赖状态**：所需公开 strict-CDP API 在 boss-agent-cli PR #382 中，尚未发布。
-> Agent Reach 的临时安装器锁定 fork 提交
-> `ba0f12541079ad794eae4c3bf3fc348befd228c9`，而不是会移动的 branch；上游发布后
+> **依赖状态**：所需公开 strict-CDP API 在 boss-agent-cli 后继拆分 PR #403–#407 中
+> （#402/#382 已按维护者意见拆分），尚未发布。Agent Reach 的临时安装器锁定五个 PR
+> 的不可变 merge 快照提交
+> `8ff6bd3eac5dfc1215500043da9647cd6ea4c73f`，而不是会移动的 branch；上游发布后
 > 应把安装器切回正式版本约束。
 
 体检（无副作用，不搜索）：
@@ -58,7 +59,7 @@ agent-reach doctor          # boss 行：off = 未装或 CDP 不通；warn = 链
 
 ```bash
 uv run --isolated --no-project \
-  --with 'git+https://github.com/iqjiy/boss-agent-cli.git@ba0f12541079ad794eae4c3bf3fc348befd228c9' \
+  --with 'git+https://github.com/iqjiy/boss-agent-cli.git@8ff6bd3eac5dfc1215500043da9647cd6ea4c73f' \
   python - <<'PY'
 from pathlib import Path
 
@@ -152,3 +153,7 @@ boss --browser-mode cdp-required --cdp-url http://localhost:9222 search "大模�
 
 不要无提示连续翻页。boss-agent-cli PR #383 为跨 CLI 进程的普通搜索增加持久
 5–10 秒列表预算；该 PR 合并发布前，Agent 仍应主动串行、降频调用。
+
+> **等待属预期，不是卡死**：连续搜索命中节流时，boss-agent-cli 会静默等待 5–10 秒
+> （TTY 下会显示「节流等待 Ns…」提示；Agent Reach 以 `--json` 调用，看不到该提示）。
+> 等待窗口内不要重试、不要拉起新浏览器、不要切换 profile。

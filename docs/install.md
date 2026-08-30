@@ -355,8 +355,9 @@ agent-reach configure groq-key
 > 不使用时关闭专用 Chrome。Boss 不支持服务器/无桌面环境。搜索命令必须带
 > `--browser-mode cdp-required --cdp-url http://localhost:9222`。
 >
-> 临时依赖：boss-agent-cli PR #382 尚未发布，安装器锁定 fork 的不可变提交
-> `ba0f12541079ad794eae4c3bf3fc348befd228c9`，不跟随会移动的 branch。上游发布后，
+> 临时依赖：boss-agent-cli 后继拆分 PR #403–#407 尚未发布，安装器锁定五个 PR 的
+> 不可变 merge 快照提交
+> `8ff6bd3eac5dfc1215500043da9647cd6ea4c73f`，不跟随会移动的 branch。上游发布后，
 > Agent Reach 应改用包含 `browser_mode="cdp_required"`、`JobItem.lid` 和
 > `job_card_browser()` 的正式版本。
 

@@ -145,7 +145,7 @@ class BossChannel(Channel):
 
         return "warn", (
             "CDP 链路就绪（9222 端口通 + 有可复用 zhipin 页签）。"
-            "Doctor 不实际执行搜索、不验证登录态 liveness 或 PR #382 API；"
+            "Doctor 不实际执行搜索、不验证登录态 liveness 或 boss-agent-cli #403-#407 快照 API；"
             "先运行 `boss --cdp-url http://localhost:9222 login --cdp` 同步现有登录态；"
             "搜索时使用 `boss --browser-mode cdp-required --cdp-url http://localhost:9222 search ...`，"
             "确保 CDP 不可用时立即停止而不是降级 headless。"

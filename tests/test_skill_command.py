@@ -132,7 +132,7 @@ class TestSkillCommand(unittest.TestCase):
         )
         self.assertIn('browser_mode="cdp_required"', career)
         self.assertIn("job_card_browser", career)
-        self.assertIn("ba0f12541079ad794eae4c3bf3fc348befd228c9", career)
+        self.assertIn("8ff6bd3eac5dfc1215500043da9647cd6ea4c73f", career)
         self.assertIn("ENVIRONMENT_RISK", career)
         self.assertIn("--browser-mode cdp-required", career)
         self.assertIn("长期复用", career)
