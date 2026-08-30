@@ -91,15 +91,20 @@ Cookie-Editor 手工导出后配置 xiaohongshu-mcp / 存量工具。
 Boss直聘配置触发：当用户说“帮我配 Boss直聘”时，先读取 `references/career.md`
 的 Boss 章节，然后在获得安装授权后运行
 `agent-reach install --env=local --system --channels=boss`。Agent 负责按系统启动
-只绑定 `127.0.0.1:9222` 的专用 Chrome；若 `boss status` 判定未登录，暂停让用户
-登录/扫码，用户确认后再运行 `boss --cdp-url http://localhost:9222 login --cdp`、
-`boss status` 和 `agent-reach doctor` 验收。不要让用户自己研究端口参数。
+只绑定 `127.0.0.1:9222` 的专用 Chrome；**拉起后第一步是暂停并让用户肉眼确认**
+窗口内是已登录状态（右上角有头像），未登录则让用户登录/扫码，用户确认后再运行
+`boss --cdp-url http://localhost:9222 login --cdp` 和 `agent-reach doctor` 验收。
+不要让用户自己研究端口参数。
 专用 Chrome profile 必须长期复用，不要每次创建，也不要默认改用日常主 Chrome。
 
-判断登录态只信 `boss status`（wt2/__zp_stoken__），绝不用当前页 URL：
+判断 CDP 浏览器登录态**不要信 `boss status`**（它只校验本地 session.enc，与
+浏览器登录态互不代表），以 `agent-reach doctor` 的浏览器 cookie 探测（wt2）
+为准，并配合用户肉眼确认。绝不用当前页 URL 判断登录态：
 `security-check` / `zhipin-security` / `_security_check` 安全校验页是 Boss 反爬挑战，
 与登录无关——已登录也会出现（带 CDP 调试端口的 Chrome 几乎必现）。看到它不要
-当成“未登录”，先跑 `boss status` 验证，再决定是否需要用户登录。
+当成“未登录”，先跑 `agent-reach doctor` 看浏览器 cookie，再决定是否需要用户登录。
+搜索报 `AUTH_EXPIRED` 即浏览器未登录的 ground truth：直接走登录流程 + `login --cdp`，
+不要往安全校验方向解释。
 
 执行搜索时必须使用
 `boss --browser-mode cdp-required --cdp-url http://localhost:9222 search ...`；

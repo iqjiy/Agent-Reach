@@ -38,8 +38,19 @@ curl -s "https://r.jina.ai/https://linkedin.com/in/username"
 > 已登录的 `web/geek/job`、未登录的 `web/user/`（扫码登录/手机号登录）、以及
 > 反爬的**安全校验页**（URL 含 `security-check` / `zhipin-security` /
 > `_security_check`）。安全校验页与登录无关：**已登录也会出现**（带 CDP 调试
-> 端口的 Chrome 几乎必现）。判断登录态只信 `boss status`（wt2/__zp_stoken__），
-> 绝不用当前页 URL。
+> 端口的 Chrome 几乎必现）。绝不用当前页 URL 判断登录态。
+
+> **双登录态存储（cdp-required 模式下以浏览器为准）。** 存在两个互不代表的
+> 凭据存储：本地 `~/.boss-agent/auth/session.enc` 和专用 Chrome profile 内的
+> 浏览器 cookie。**`boss status` / `status --live` 只校验前者**——即使它报
+> `logged_in: true`，也不代表 CDP 浏览器已登录（session.enc 是 Bridge/httpx
+> 时代遗留的凭据库）。CDP 模式搜索走的是浏览器 cookie，所以：
+> 1. 拉起专用 Chrome 后，第一步必须**暂停并让用户肉眼确认**窗口内是已登录
+>    状态（右上角有头像），确认后才允许执行搜索；
+> 2. doctor 的 boss 行会直接探测浏览器内有无 wt2 cookie，以它为准；
+> 3. **`AUTH_EXPIRED` 是 ground truth**：搜索报它就直接走登录 runbook
+>    （用户在专用窗口登录 → `login --cdp`），禁止再往「安全校验」方向解释；
+>    `_security_check` 页面只在 `AUTH_EXPIRED` 不存在时才按滑块处理。
 
 > **依赖状态**：所需公开 strict-CDP API 在 boss-agent-cli 后继拆分 PR #403–#407 中
 > （#402/#382 已按维护者意见拆分），尚未发布。Agent Reach 的临时安装器锁定五个 PR
@@ -50,7 +61,8 @@ curl -s "https://r.jina.ai/https://linkedin.com/in/username"
 体检（无副作用，不搜索）：
 
 ```bash
-agent-reach doctor          # boss 行：off = 未装或 CDP 不通；warn = 链路就绪
+agent-reach doctor          # boss 行：off = 未装或 CDP 不通；warn = 链路就绪，
+                            # message 会注明浏览器内有无 wt2 登录 cookie（以浏览器为准）
 ```
 
 搜索 + JD 使用公开 API（`browser_mode` / `job_card_browser` / `JobItem.lid`）。
@@ -123,8 +135,12 @@ PY
    这个专用 profile 要长期复用，以保留稳定登录态；不要每次运行时删除或新建，
    也不要默认切换到日常主 Chrome。不使用时关闭这个专用窗口。
 
-3. **用户手动登录（仅在 `boss status` 确认未登录时）**：暂停并让用户在这个专用
-   窗口登录或扫码。用户确认完成后，保存 CDP 登录态：
+   **拉起后第一步：暂停并让用户肉眼确认窗口内是已登录状态（右上角有头像）。**
+   不要用 `boss status` 代替这一步——它只校验本地 session.enc，不代表浏览器。
+
+3. **用户手动登录（浏览器未登录时）**：判定以 doctor 的浏览器 cookie 探测为准
+   （无 wt2 = 浏览器未登录），其次才是用户肉眼确认；`boss status` 只作参考。
+   让用户在这个专用窗口登录或扫码。用户确认完成后，保存 CDP 登录态：
    ```bash
    boss --cdp-url http://localhost:9222 login --cdp
    ```
@@ -133,13 +149,16 @@ PY
    不是登录页：等它自动放行或让用户手动过一下滑块即可，不要当成“未登录”去
    重新扫码登录。
 
-4. **登录态是否有效**（stoken 是否过期）：
+4. **登录态是否有效**（浏览器 cookie 探测 + stoken 是否过期）：
    ```bash
-   boss status
-   agent-reach doctor
+   agent-reach doctor     # 看 boss 行 message 里的浏览器 wt2 cookie 探测结果
+   boss status            # 只反映本地 session.enc，仅作参考
    ```
 
 5. **错误码处置**（搜索/取 JD 时）：
+   - `AUTH_EXPIRED`（用户未登录）→ **ground truth**：CDP 浏览器未登录（不管
+     `boss status` 说什么），直接走第 3 步登录流程 + `login --cdp`，禁止往
+     「安全校验」方向解释；
    - code 36（ACCOUNT_RISK）→ 立即停，手动到 BOSS 页面处理，不可自动重试；
    - code 9（RATE_LIMITED）→ 冷却后重试；
    - code 37 + `环境存在异常` → `ENVIRONMENT_RISK`，立即停止，不刷新 Token、不重新登录、不自动重试；
