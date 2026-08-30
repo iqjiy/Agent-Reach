@@ -8,10 +8,20 @@
 调用姿势见 skill/references/career.md；check() 只负责「装没装 + CDP 链路就绪 +
 浏览器内有无登录 cookie」的体检，不搜索。
 
-双登录态存储（体检必须区分，历史教训）：
-- `boss status` / `status --live` 只校验本地 `~/.boss-agent/auth/session.enc`；
-- CDP 模式搜索走的是专用 Chrome profile 内的浏览器 cookie——两个存储互不代表。
-  所以第 4 层直接问 CDP 浏览器本体（Storage.getCookies），以浏览器为准。
+双登录态存储（体检必须区分，历史教训）。两者都是必需的，但认证的是不同通道：
+
+- `~/.boss-agent/auth/session.enc`（`boss status` / `status --live` 只校验它）
+  1. 是硬性门槛：`_get_browser()` 无条件 `get_token()`，读不到就 `AuthRequired`，
+     所以别删它——CDP 搜索会在连上浏览器之前就失败；
+  2. 但**不是搜索的认证凭据**：CDP 连上真 Chrome 后复用 `contexts[0]`，其 cookies
+     只在「没有任何 context」的分支才注入，实际从未生效；
+  3. httpx 通道（低危 op：status/detail/cities/`job_card_httpx`）真用它的
+     cookies + stoken；code 37 的 `force_refresh()` 也回写它。
+- 专用 Chrome profile 内的浏览器 cookie：CDP 模式下 search/greet 等高危 op
+  实际携带的凭据。
+
+所以 session.enc 有效 + 浏览器未登录 = `boss status` 报已登录但搜索报
+`AUTH_EXPIRED`。第 4 层直接问 CDP 浏览器本体（Storage.getCookies），以浏览器为准。
 """
 
 import base64

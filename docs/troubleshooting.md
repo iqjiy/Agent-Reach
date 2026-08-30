@@ -22,17 +22,20 @@ agent-reach configure --from-browser chrome --platform xueqiu
 但 `boss ... search` 立刻报 `{"code": "AUTH_EXPIRED", "message": "用户未登录"}`。
 专用 Chrome 可能同时停在带 `_security_check` 的 URL 上，看起来像反爬滑块。
 
-**原因：** Boss 有两个**互不代表**的登录态存储：
+**原因：** Boss 有两个登录态存储，认证的是不同通道：
 
 | 存储 | 谁在用 |
 |---|---|
-| `~/.boss-agent/auth/session.enc` | `boss status` / `status --live`（Bridge/httpx 时代遗留） |
-| `~/.boss-chrome-profile` 内的浏览器 cookie | `cdp-required` 模式下的实际搜索请求 |
+| `~/.boss-agent/auth/session.enc` | `boss status` / `status --live`；httpx 通道的低危操作（`detail` / `cities` / `job_card_httpx`）。CDP 搜索也会读它（读不到直接报「未登录」），但复用真 Chrome context 时它的 cookie 从未真正生效 |
+| `~/.boss-chrome-profile` 内的浏览器 cookie | `cdp-required` 模式下 search / greet 等高危操作实际携带的凭据 |
 
 `boss status` 只校验本地 session.enc。本地存着几天前的旧凭据、而专用 Chrome
 profile 本身没登录时，它依然报 `logged_in: true`——这不是登录态有效的证明。
 同时 `_security_check` 页面是反爬挑战，**已登录也会出现**，不能用它判断登录态；
 两者叠加很容易把「浏览器未登录」误判成「卡在滑块」。
+
+> 两个存储都不要删。session.enc 缺失会让 CDP 搜索在连上浏览器之前就失败；
+> 需要刷新它时跑 `login --cdp`，不要手工删文件。
 
 **判定顺序：**
 

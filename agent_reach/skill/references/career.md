@@ -40,17 +40,23 @@ curl -s "https://r.jina.ai/https://linkedin.com/in/username"
 > `_security_check`）。安全校验页与登录无关：**已登录也会出现**（带 CDP 调试
 > 端口的 Chrome 几乎必现）。绝不用当前页 URL 判断登录态。
 
-> **双登录态存储（cdp-required 模式下以浏览器为准）。** 存在两个互不代表的
-> 凭据存储：本地 `~/.boss-agent/auth/session.enc` 和专用 Chrome profile 内的
-> 浏览器 cookie。**`boss status` / `status --live` 只校验前者**——即使它报
-> `logged_in: true`，也不代表 CDP 浏览器已登录（session.enc 是 Bridge/httpx
-> 时代遗留的凭据库）。CDP 模式搜索走的是浏览器 cookie，所以：
+> **双登录态存储（cdp-required 模式下以浏览器为准）。** 存在两个凭据存储，
+> **都不能删**，但认证的是不同通道：
+>
+> | 存储 | 角色 |
+> |---|---|
+> | `~/.boss-agent/auth/session.enc` | ① 硬性门槛：`_get_browser()` 无条件 `get_token()`，读不到直接 `AuthRequired`，CDP 搜索会在连浏览器前就失败；② **不是**搜索的认证凭据：CDP 复用真 Chrome 的 `contexts[0]` 时，它的 cookies 只在「无 context」分支注入，实际从未生效；③ httpx 通道（低危 op：`status`/`detail`/`cities`/`job_card_httpx`）真用它的 cookies + stoken，code 37 的 `force_refresh()` 也回写它 |
+> | 专用 Chrome profile 内的浏览器 cookie | CDP 模式下 search/greet 等高危 op 实际携带的凭据 |
+>
+> **`boss status` / `status --live` 只校验 session.enc**——即使报
+> `logged_in: true`，也不代表 CDP 浏览器已登录。所以：
 > 1. 拉起专用 Chrome 后，第一步必须**暂停并让用户肉眼确认**窗口内是已登录
 >    状态（右上角有头像），确认后才允许执行搜索；
 > 2. doctor 的 boss 行会直接探测浏览器内有无 wt2 cookie，以它为准；
 > 3. **`AUTH_EXPIRED` 是 ground truth**：搜索报它就直接走登录 runbook
 >    （用户在专用窗口登录 → `login --cdp`），禁止再往「安全校验」方向解释；
 >    `_security_check` 页面只在 `AUTH_EXPIRED` 不存在时才按滑块处理。
+> 4. 不要为了「清理旧凭据」删除 session.enc；要刷新它就跑 `login --cdp`。
 
 > **依赖状态**：所需公开 strict-CDP API 在 boss-agent-cli 后继拆分 PR #403–#407 中
 > （#402/#382 已按维护者意见拆分），尚未发布。Agent Reach 的临时安装器锁定五个 PR
