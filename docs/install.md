@@ -341,12 +341,13 @@ agent-reach configure groq-key
    ```powershell
    Start-Process chrome.exe -ArgumentList '--remote-debugging-address=127.0.0.1','--remote-debugging-port=9222',"--user-data-dir=$env:USERPROFILE\.boss-chrome-profile",'https://www.zhipin.com/web/geek/job'
    ```
-4. 暂停，让**用户手动登录**、扫码或处理滑块；Agent 不索取账号密码、不代替登录。
+4. 暂停，让**用户肉眼确认**窗口内的登录状态（右上角有头像）；未登录则让**用户手动
+   登录**、扫码或处理滑块。Agent 不索取账号密码、不代替登录，也不要用 `boss status`
+   代替这一步——它只校验本地 `session.enc`，不代表这个 Chrome 已登录。
 5. 用户确认登录完成后运行：
    ```bash
    boss --cdp-url http://localhost:9222 login --cdp
-   boss status
-   agent-reach doctor
+   agent-reach doctor    # 看 boss 行 message 里的浏览器 wt2 cookie 探测结果
    ```
 
 > 安全边界：任何能访问调试端口 9222 的本机进程都能完全控制这个 Chrome。
@@ -418,7 +419,7 @@ After installation, use upstream tools directly. See SKILL.md for the full comma
 | 小红书 | `opencli`（服务器 `mcporter`） | `opencli xiaohongshu search "query" -f yaml` |
 | 小宇宙播客 | `transcribe.sh` | `bash ~/.agent-reach/tools/xiaoyuzhou/transcribe.sh <URL>` |
 | LinkedIn | `mcporter` | `mcporter call linkedin.get_person_profile linkedin_username="..."` |
-| Boss直聘 | `boss` / Python public API | `boss status`；搜索和 JD 见 `references/career.md` |
+| Boss直聘 | `boss` / Python public API | `agent-reach doctor`（浏览器 wt2 探测；`boss status` 只反映本地 session.enc）；搜索和 JD 见 `references/career.md` |
 | RSS | `feedparser` | `python3 -c "import feedparser; ..."` |
 
 > 多后端平台以 `agent-reach doctor --json` 的 `active_backend` 为准。

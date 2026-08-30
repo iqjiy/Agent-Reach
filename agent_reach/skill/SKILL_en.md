@@ -121,13 +121,24 @@ agent-reach doctor --json
 When the user asks “help me configure Boss Zhipin” / “帮我配 Boss直聘”, read the
 Boss section in `references/career.md`. After explicit install approval, run
 `agent-reach install --env=local --system --channels=boss`, launch the dedicated
-loopback-only Chrome profile for their OS, and pause for the user to log in
-manually. Then verify with `boss --cdp-url http://localhost:9222 login --cdp`,
-`boss status`, and `agent-reach doctor`. Do not make the user assemble CDP flags.
+loopback-only Chrome profile for their OS, then **pause and have the user visually
+confirm** the window is logged in (avatar in the top-right); if not, have them log
+in manually. Then verify with `boss --cdp-url http://localhost:9222 login --cdp`
+and `agent-reach doctor`. Do not make the user assemble CDP flags.
 Keep reusing the dedicated Chrome profile; do not recreate it for every run or
 switch to the user's daily profile by default. Search with
 `boss --browser-mode cdp-required --cdp-url http://localhost:9222 search ...`.
 On `ENVIRONMENT_RISK`, stop without refreshing, relogging, or retrying.
+
+**Do not trust `boss status` for CDP browser login state** — it only validates the
+local `~/.boss-agent/auth/session.enc` store, which does not represent the
+dedicated Chrome profile's cookies that `cdp-required` searches actually use. Use
+the browser `wt2` cookie probe in `agent-reach doctor` plus the user's visual
+confirmation. Never judge login state from the page URL: `security-check` /
+`zhipin-security` / `_security_check` pages are anti-bot challenges that appear
+even when logged in. `AUTH_EXPIRED` from a search is the ground truth for a
+logged-out browser — go straight to the login flow + `login --cdp` instead of
+interpreting it as a security check.
 
 ## Discovering OpenCLI adapters
 
