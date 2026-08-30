@@ -3,8 +3,11 @@
 
 Boss直聘 走 CDP 调试端口复用已登录的真 Chrome（headless 是禁区，code 36 风控）。
 check() 只做只读探测：boss-agent-cli 装没装 → CDP 端口通不通 → 有无可复用
-zhipin 页签 → 页签是否都停在反爬安全校验页。各分支各自返回 (status, message)，
-且永不触发浏览器启动（无副作用）。
+zhipin 页签 → 浏览器内有无登录 cookie（wt2）→ 页签是否都停在反爬安全校验页。
+各分支各自返回 (status, message)，且永不触发浏览器启动（无副作用）。
+
+注意 `boss status` 只校验本地 session.enc，不代表 CDP 浏览器已登录——第 4 层
+以浏览器本体（Storage.getCookies）为准。
 """
 
 from unittest.mock import patch
@@ -92,7 +95,7 @@ def test_check_warn_when_no_zhipin_page():
 
     with patch.object(boss_mod, "probe_command", return_value=_ok_probe()), patch.object(
         boss_mod, "_cdp_json", side_effect=fake_cdp
-    ):
+    ), patch.object(boss_mod, "_cdp_zhipin_login_cookie", return_value=None):
         status, message = ch.check()
     assert status == "warn"
     assert ch.active_backend is None
@@ -108,13 +111,51 @@ def test_check_warn_when_ready():
 
     with patch.object(boss_mod, "probe_command", return_value=_ok_probe()), patch.object(
         boss_mod, "_cdp_json", side_effect=fake_cdp
-    ):
+    ), patch.object(boss_mod, "_cdp_zhipin_login_cookie", return_value=True):
         status, message = ch.check()
     assert status == "warn"
     assert "boss-agent-cli #403-#407" in message
     assert "boss --cdp-url http://localhost:9222 login --cdp" in message
     assert "--browser-mode cdp-required" in message
     assert "code 37 = TOKEN_REFRESH_FAILED" not in message
+    assert "wt2" in message
+    assert ch.active_backend is None
+
+
+def test_check_warn_when_cookie_probe_fails():
+    ch = BossChannel()
+
+    def fake_cdp(path):
+        if path == "/json/version":
+            return {"Browser": "Chrome"}
+        return [{"type": "page", "url": "https://www.zhipin.com/web/geek/job"}]
+
+    with patch.object(boss_mod, "probe_command", return_value=_ok_probe()), patch.object(
+        boss_mod, "_cdp_json", side_effect=fake_cdp
+    ), patch.object(boss_mod, "_cdp_zhipin_login_cookie", return_value=None):
+        status, message = ch.check()
+    assert status == "warn"
+    assert "登录态未知" in message
+    assert ch.active_backend is None
+
+
+def test_check_warn_when_browser_not_logged_in():
+    """浏览器内无 wt2 → 明确提示未登录，且指出 boss status 只代表 session.enc。"""
+    ch = BossChannel()
+
+    def fake_cdp(path):
+        if path == "/json/version":
+            return {"Browser": "Chrome"}
+        return [{"type": "page", "url": "https://www.zhipin.com/web/geek/job"}]
+
+    with patch.object(boss_mod, "probe_command", return_value=_ok_probe()), patch.object(
+        boss_mod, "_cdp_json", side_effect=fake_cdp
+    ), patch.object(boss_mod, "_cdp_zhipin_login_cookie", return_value=False):
+        status, message = ch.check()
+    assert status == "warn"
+    assert "AUTH_EXPIRED" in message
+    assert "session.enc" in message
+    assert "boss --cdp-url http://localhost:9222 login --cdp" in message
     assert ch.active_backend is None
 
 
@@ -133,13 +174,19 @@ def test_check_warn_when_stuck_on_security_check():
 
     with patch.object(boss_mod, "probe_command", return_value=_ok_probe()), patch.object(
         boss_mod, "_cdp_json", side_effect=fake_cdp
-    ):
+    ), patch.object(boss_mod, "_cdp_zhipin_login_cookie", return_value=True):
         status, message = ch.check()
     assert status == "warn"
     assert "安全校验" in message
     assert "不代表未登录" in message
     assert "boss status" in message
+    assert "wt2" in message
     assert ch.active_backend is None
+
+
+def test_cdp_cookie_probe_returns_none_without_ws_url():
+    with patch.object(boss_mod, "_cdp_json", return_value={"Browser": "Chrome"}):
+        assert boss_mod._cdp_zhipin_login_cookie() is None
 
 
 def test_check_clears_stale_active_backend():
